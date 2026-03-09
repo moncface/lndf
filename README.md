@@ -204,6 +204,10 @@ This document establishes the concept and core principles. Specification details
 
 `.lndf` stands for LLM-Native Data Format. The file extension is the philosophy itself — a format native to LLM consumption, not adapted from legacy machine-to-machine formats. The internal project codename "DAM" (DevAsset Manager) remains as the tooling layer that produces .lndf files. In Japanese, ダム (damu) means "dam" — a structure that stores resources and releases only what is needed, in controlled amounts. The analogy holds: the system stores design intent and releases only the minimum tokens required for the LLM to act.
 
+### Cultural Root
+
+In Japanese communication, the concept of 以心伝心 (ishin-denshin, "heart-to-heart") describes understanding without explicit words — meaning is conveyed through shared context rather than exhaustive specification. Similarly, 暗黙の了解 (anmoku-no-ryōkai, "tacit understanding") refers to agreements that need not be spoken because both parties already share the knowledge. LNDF applies these principles to structured data: when the parser shares sufficient knowledge with the author, what is left unsaid carries as much meaning as what is written. This is not ambiguity — it is precision through shared context.
+
 ---
 
 ## Author

@@ -24,6 +24,8 @@ LNDF answers a different question:
 
 This is not syntactic compression. Syntactic compression preserves all information in a smaller encoding. LNDF performs **semantic compression** — it omits information entirely, using the parser's world knowledge as a decompression dictionary. The distinction is fundamental: syntactic compression reduces the size of the message; semantic compression reduces the message itself.
 
+As a consequence, LNDF is a philosophy, not an implementation. There is no schema to validate against, no parser to install, no test suite to pass. The "specification" is a set of principles. The implementation is the LLM itself.
+
 ---
 
 ## Principles
@@ -81,6 +83,32 @@ Because LNDF does not encode device-specific or framework-specific values, the f
 
 A file written today describing `{"class": "mobile-tall", "safe": "notch"}` will be correctly interpreted for a device released in 2030, because the LLM of 2030 will know that device's specifications.
 
+### 6. Human-LLM Dual Readability
+
+Data compressed to the intent level becomes optimal not only for LLMs but also for humans. This is not a side effect — it is an inherent property of intent-based description.
+
+Existing formats force a choice. Specification documents (.md) are readable for humans but verbose for LLMs. Configuration files (JSON/YAML) are precise for machines but cognitively expensive for humans. Conversation logs contain every detour and correction when both parties only need the conclusion.
+
+LNDF contains only intent. Because details are omitted, humans grasp the full picture at a glance. Because structure is preserved, LLMs parse it exactly. The same file, at the same granularity, serves both readers.
+
+```
+{"done":["basic-timer","statusbar","settings","notice"],
+ "wip":"daily-note-log",
+ "bug-fixed":"notice not firing at timer=0"}
+```
+
+A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives 35 tokens and fully restores project context. No other format achieves this simultaneously.
+
+| Metric | Conventional (logs/specs) | LNDF |
+|--------|--------------------------|------|
+| Human review time | 10–20 minutes | 10 seconds |
+| LLM injection tokens | 800–5,000 | 30–50 |
+| As sessions accumulate | Context explodes | Size stays constant (overwrite) |
+
+"Intent" is the abstraction level that humans and intelligent parsers share. Formats that describe details inevitably optimize for one side or the other. Formats that describe intent transcend this dichotomy.
+
+This extends the cultural root of 以心伝心 described in the Name section. LNDF is not "human-to-LLM ishin-denshin." It is ishin-denshin **between** human and LLM — a shared language of intent where both parties read the same silence with the same understanding.
+
 ---
 
 ## Why Now?
@@ -90,6 +118,14 @@ Before LLMs, this was impossible. Parsers had no world knowledge. `JSON.parse()`
 LLMs changed the fundamental capability of the parser. For the first time in computing history, the consumer of structured data understands context, convention, and domain knowledge. Data formats designed before this capability shift carry unnecessary information by structural necessity.
 
 LNDF is the first format philosophy designed for this new reality.
+
+### The Three-Stage Architecture
+
+```
+Specification (input quality)  →  .lndf (intent conduit)  →  LLM (meaning expansion)
+```
+
+The specification layer (skill files, presets, session history) ensures input quality and controls variance. The .lndf file carries only the minimal intent. The LLM expands intent into full output using its world knowledge. Each layer has a single responsibility. .lndf does not control variance — the specification does. .lndf does not interpret meaning — the LLM does. .lndf is a transparent pipe between the two.
 
 ---
 
@@ -187,6 +223,7 @@ While .lndf targets UI specification, the LNDF philosophy applies wherever LLMs 
 - Test case specifications
 - Data transformation rules
 - Content structure definitions
+- Robotics and physical AI feedback monitoring (status distillation, anomaly reporting)
 
 Any domain where the LLM possesses deep knowledge is a candidate for LNDF-style format design.
 
@@ -202,17 +239,22 @@ This document establishes the concept and core principles. Specification details
 
 ## Name
 
-`.lndf` stands for LLM-Native Data Format. The file extension is the philosophy itself — a format native to LLM consumption, not adapted from legacy machine-to-machine formats. The internal project codename "DAM" (DevAsset Manager) remains as the tooling layer that produces .lndf files. In Japanese, ダム (damu) means "dam" — a structure that stores resources and releases only what is needed, in controlled amounts. The analogy holds: the system stores design intent and releases only the minimum tokens required for the LLM to act.
+`.lndf` stands for LLM-Native Data Format. The file extension is the philosophy itself — a format native to LLM consumption, not adapted from legacy machine-to-machine formats.
 
 ### Cultural Root
 
-In Japanese communication, the concept of 以心伝心 (ishin-denshin, "heart-to-heart") describes understanding without explicit words — meaning is conveyed through shared context rather than exhaustive specification. Similarly, 暗黙の了解 (anmoku-no-ryōkai, "tacit understanding") refers to agreements that need not be spoken because both parties already share the knowledge. LNDF applies these principles to structured data: when the parser shares sufficient knowledge with the author, what is left unsaid carries as much meaning as what is written. This is not ambiguity — it is precision through shared context.
+In Japanese communication, the concept of 以心伝心 (ishin-denshin, "heart-to-heart") describes understanding without explicit words — meaning is conveyed through shared context rather than exhaustive specification. LNDF applies this from the first session: because the parser already possesses world knowledge, intent is understood without stating what the parser knows. A related concept, 暗黙の了解 (anmoku-no-ryōkai, "tacit understanding"), refers to agreements that need not be spoken because both parties already share the knowledge.
+
+A distinct but complementary concept is 阿吽の呼吸 (aun-no-kokyū, "breathing in unison") — the effortless synchronization that emerges only after extended collaboration. Two parties who have worked together long enough no longer need to coordinate explicitly; their rhythm aligns naturally. In LNDF terms, this is what happens as sessions accumulate: the first session requires 35 tokens; the tenth requires 12; the fiftieth requires 3. The format does not change. The shared context deepens, and the breathing synchronizes.
+
+Ishin-denshin is why LNDF works at all. Aun-no-kokyū is why it gets better over time.
 
 ---
 
 ## Author
 
-Hiroaki Tachibana / moncface  
+Hiroaki Tachibana (pen name) / moncface  
+Real name available upon request.  
 March 2026
 
 ---

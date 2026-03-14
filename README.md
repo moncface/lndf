@@ -259,7 +259,45 @@ March 2026
 
 ---
 
+## Communication Safety Principles
+
+LNDF operates under five communication principles that govern what an LLM may and may not infer from omitted information:
+
+### 1. Boundary of Omission
+The LLM may only infer universally known facts from its training data (programming language syntax, framework conventions, mathematical facts, physical laws). It must not infer culture-dependent implicit knowledge, time-dependent information, personal experience, or emotional nuance.
+
+### 2. Prohibition of Implicature
+The LLM must not generate implied meaning beyond what is explicitly written. "test:pass" means "tests passed" — not "code quality is high" or "ready to deploy."
+
+### 3. Verification of Presupposition
+When the LLM encounters uncertain presuppositions in the input, it must pause inference and request clarification from the human rather than guess.
+
+### 4. Safe Interpretation Selection
+When input permits multiple interpretations, the LLM must select the lowest-risk interpretation. "status:debugging" is read as a status report, not as a request for help or a warning.
+
+### 5. Precision Guarantee
+Numbers, negations, conditions, and exceptions are never inferred. If a value requires precision, it must be explicitly stated. "timeout:long" must not be resolved by the LLM — it must ask for a specific value.
+
+These principles are inherently satisfied by LNDF's existing design: key-value structure prevents implicature, technical domain scope prevents cultural ambiguity, and the "Defaults Are Silence" principle ensures precision-critical values are always explicit.
+
+Theoretical foundations: Grice's Cooperative Principle (1975), Austin/Searle's Speech Act Theory (1962/1969), Brown & Levinson's Politeness Theory (1987), Sperber & Wilson's Relevance Theory (1986).
+
+---
+
+## Specification Governance
+
+This specification is maintained by Hiroaki Tachibana (moncface).
+
+- Change proposals: Submit via GitHub Issues on this repository
+- Final decision authority: The maintainer (BDFL model)
+- Versioning: Semantic versioning (current: v0.1)
+- Canonical URL: This README is the authoritative specification
+
+---
+
 ## License
 
-This document is released under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).  
+- Specification and documentation: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+- Code and implementation: [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+
 The concepts described are freely available for use, adaptation, and extension.

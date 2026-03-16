@@ -16,10 +16,10 @@ LNDF inverts this assumption. The parser — an LLM — possesses vast world kno
 
 ## The Core Insight
 
-Every existing data format answers the question:  
+Every existing data format answers the question:
 *"How do I give a machine all the information it needs?"*
 
-LNDF answers a different question:  
+LNDF answers a different question:
 *"What is the minimum I need to say for an intelligent parser to understand my intent?"*
 
 This is not syntactic compression. Syntactic compression preserves all information in a smaller encoding. LNDF performs **semantic compression** — it omits information entirely, using the parser's world knowledge as a decompression dictionary. The distinction is fundamental: syntactic compression reduces the size of the message; semantic compression reduces the message itself.
@@ -146,49 +146,96 @@ The gap between LNDF and existing optimization approaches (TOON, Morph Compact, 
 
 ---
 
-## Reference Implementation: .lndf
+## Reference Implementation: Mon CLI
 
-`.lndf` is the first concrete implementation of LNDF principles, applied to UI specification for LLM-assisted development.
+[Mon CLI](https://github.com/moncface/mon-tab) (`npm install -g mon-tab`) is the first tooling implementation of LNDF principles, applied to project state distillation for AI coding sessions.
 
-### Type System
+### Project State Distillation
 
-.lndf files use a `_type` field to distinguish content categories:
+`mon ld` generates a `.lndf` file from git metadata, package.json, and test results:
 
-- `device` — Device class definitions (abstracted, not device-specific)
-- `layout` — UI structure and element placement
-- `flow` — Screen navigation and transitions
-- `token` — Design tokens (colors, typography, spacing)
-- `diff` — Differential updates to existing designs
-- `project` — Project state and metadata
-
-### Compression Techniques
-
-.lndf combines LNDF's intent-based omission with established compression algorithms adapted for structured data:
-
-- **Dictionary tables** (database normalization) — Shared style definitions referenced by ID
-- **Run-length encoding** (image compression) — Repeated UI elements expressed as pattern + count
-- **Relative coordinates** (vector graphics) — Child positions relative to parent, not absolute
-- **Bit flags** (network protocols) — Boolean attributes as compact flag strings
-- **Default omission** (Protocol Buffers) — Platform defaults are never transmitted
-
-### Example
-
-A Chrome extension popup with header, search input, result list, and action button:
-
-```json
-{"_type":"layout","class":"chrome-ext-popup",
- "layout":"header,content,footer",
- "content":[
-   {"t":"input","role":"search"},
-   {"t":"list","role":"results","f":1},
-   {"t":"btn","label":"Action","bg":"#007AFF"}
- ],
- "style":"minimal"}
+```
+---
+mon-tab
+branch:main
+last:feat: add test result distillation to mon ld
+changed:commands/ld.js,package.json
+stack:chrome-ext
+test:pass
+status:active development
+---
 ```
 
-Estimated tokens: ~30.  
-Equivalent standard JSON with full specification: ~250+ tokens.  
-Equivalent natural language description: ~100+ tokens.
+Format: key:value, one per line. No quotes, no braces. First line = project name. Absent fields = defaults (the LLM infers).
+
+### Debug Distillation (v0.5.2)
+
+`mon ld` automatically runs `npm test` if `scripts.test` exists:
+
+| Field | Meaning |
+|-------|---------|
+| `test:pass` | All tests passing (exit 0) |
+| `test:fail` | Tests failing (exit 1) |
+| `test:timeout` | Tests exceeded 30s |
+| `error:...` | stderr tail, last 3 lines (only when test:fail) |
+
+- No `scripts.test` in package.json → `test:` and `error:` fields omitted (Defaults Are Silence)
+- `test:fail` or `test:timeout` overrides status to `debugging`
+
+### Commands
+
+| Command | Action |
+|---------|--------|
+| `mon ld` | Distill project state → .lndf/current.lndf |
+| `mon lv` | View current distillation |
+| `mon lv --reindex` | Build SQLite index from hako/ frontmatter |
+| `mon lv --tag <tag>` | Search hako by tag |
+| `mon lv --after <date>` | Search hako by date |
+| `mon lv --stats` | Show hako index statistics |
+| `mon lc` | Distill + copy to clipboard |
+| `mon lp create <name>` | Create cross-project collection |
+| `mon lp add <name> <path>` | Add hako to project |
+| `mon lp dump <name>` | Concatenate all hako for LLM context |
+| `mon lp list` | List all projects |
+
+### File Locations
+
+```
+Project-local:
+  {project-root}/.lndf/
+    ├── current.lndf
+    └── history/YYYY-MM-DDTHHMMSS.lndf
+
+User-global:
+  ~/.mon/
+    ├── hako/        ← individual distillations / notes
+    └── projects/    ← project files (lists of hako paths)
+```
+
+### AI Coding Session Workflow
+
+```bash
+mon lv                    # load project state
+mon lp list               # check active cross-project work
+mon lp dump <name>        # load full project context
+# ... work with AI coding tool ...
+mon ld                    # save project state
+```
+
+---
+
+## Broader Applicability
+
+While Mon CLI targets project state distillation, the LNDF philosophy applies wherever LLMs consume structured data:
+
+- Infrastructure definitions (cloud configuration, deployment specs)
+- API contract descriptions
+- Test case specifications
+- Data transformation rules
+- Content structure definitions
+- Robotics and physical AI feedback monitoring (status distillation, anomaly reporting)
+
+Any domain where the LLM possesses deep knowledge is a candidate for LNDF-style format design.
 
 ---
 
@@ -211,51 +258,6 @@ LNDF assumes the parser (LLM) has:
 When LLM interpretation is unreliable for a specific domain, explicit specification remains necessary. LNDF is not a universal replacement for traditional formats — it is an additional paradigm for contexts where an LLM is the consumer.
 
 The recommended approach is **hybrid**: use LNDF for LLM communication, maintain traditional formats (JSON, etc.) for machine-to-machine and human-readable contexts. Conversion between layers is handled by tooling, not by the user.
-
----
-
-## Broader Applicability
-
-While .lndf targets UI specification, the LNDF philosophy applies wherever LLMs consume structured data:
-
-- Infrastructure definitions (cloud configuration, deployment specs)
-- API contract descriptions
-- Test case specifications
-- Data transformation rules
-- Content structure definitions
-- Robotics and physical AI feedback monitoring (status distillation, anomaly reporting)
-
-Any domain where the LLM possesses deep knowledge is a candidate for LNDF-style format design.
-
----
-
-## Status
-
-LNDF is a design philosophy in active development. The .lndf reference implementation is used internally as part of a personal development environment.
-
-This document establishes the concept and core principles. Specification details and tooling may follow.
-
----
-
-## Name
-
-`.lndf` stands for LLM-Native Data Format. The file extension is the philosophy itself — a format native to LLM consumption, not adapted from legacy machine-to-machine formats.
-
-### Cultural Root
-
-In Japanese communication, the concept of 以心伝心 (ishin-denshin, "heart-to-heart") describes understanding without explicit words — meaning is conveyed through shared context rather than exhaustive specification. LNDF applies this from the first session: because the parser already possesses world knowledge, intent is understood without stating what the parser knows. A related concept, 暗黙の了解 (anmoku-no-ryōkai, "tacit understanding"), refers to agreements that need not be spoken because both parties already share the knowledge.
-
-A distinct but complementary concept is 阿吽の呼吸 (aun-no-kokyū, "breathing in unison") — the effortless synchronization that emerges only after extended collaboration. Two parties who have worked together long enough no longer need to coordinate explicitly; their rhythm aligns naturally. In LNDF terms, this is what happens as sessions accumulate: the first session requires 35 tokens; the tenth requires 12; the fiftieth requires 3. The format does not change. The shared context deepens, and the breathing synchronizes.
-
-Ishin-denshin is why LNDF works at all. Aun-no-kokyū is why it gets better over time.
-
----
-
-## Author
-
-Hiroaki Tachibana (pen name) / moncface  
-Real name available upon request.  
-March 2026
 
 ---
 
@@ -284,6 +286,26 @@ Theoretical foundations: Grice's Cooperative Principle (1975), Austin/Searle's S
 
 ---
 
+## Status
+
+LNDF is a design philosophy in active development. Mon CLI v0.5.2 implements project state distillation with debug awareness. 47 commands available.
+
+---
+
+## Name
+
+`.lndf` stands for LLM-Native Data Format. The file extension is the philosophy itself — a format native to LLM consumption, not adapted from legacy machine-to-machine formats.
+
+### Cultural Root
+
+In Japanese communication, the concept of 以心伝心 (ishin-denshin, "heart-to-heart") describes understanding without explicit words — meaning is conveyed through shared context rather than exhaustive specification. LNDF applies this from the first session: because the parser already possesses world knowledge, intent is understood without stating what the parser knows. A related concept, 暗黙の了解 (anmoku-no-ryōkai, "tacit understanding"), refers to agreements that need not be spoken because both parties already share the knowledge.
+
+A distinct but complementary concept is 阿吽の呼吸 (aun-no-kokyū, "breathing in unison") — the effortless synchronization that emerges only after extended collaboration. Two parties who have worked together long enough no longer need to coordinate explicitly; their rhythm aligns naturally. In LNDF terms, this is what happens as sessions accumulate: the first session requires 35 tokens; the tenth requires 12; the fiftieth requires 3. The format does not change. The shared context deepens, and the breathing synchronizes.
+
+Ishin-denshin is why LNDF works at all. Aun-no-kokyū is why it gets better over time.
+
+---
+
 ## Specification Governance
 
 This specification is maintained by Hiroaki Tachibana (moncface).
@@ -292,6 +314,14 @@ This specification is maintained by Hiroaki Tachibana (moncface).
 - Final decision authority: The maintainer (BDFL model)
 - Versioning: Semantic versioning (current: v0.1)
 - Canonical URL: This README is the authoritative specification
+
+---
+
+## Author
+
+Hiroaki Tachibana (pen name) / moncface
+Real name available upon request.
+March 2026
 
 ---
 

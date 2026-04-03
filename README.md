@@ -12,6 +12,8 @@ Traditional data formats (JSON, XML, YAML, Protocol Buffers) are designed for de
 
 LNDF inverts this assumption. The parser — an LLM — possesses vast world knowledge. Therefore, **any information the LLM already knows does not need to be in the data**. The format carries only what the LLM cannot infer: **human intent**.
 
+LNDF is the first implementation of [Shared Context Reduction (SCR)](https://github.com/moncface/scr) — the general principle of eliminating mutually known information between communicating agents. The Five Communication Safety Principles documented below are formally defined in the SCR specification and apply to all SCR implementations.
+
 ---
 
 ## The Core Insight
@@ -262,6 +264,8 @@ The recommended approach is **hybrid**: use LNDF for LLM communication, maintain
 ---
 
 ## Communication Safety Principles
+
+> These principles are formally defined in [SCR (Shared Context Reduction)](https://github.com/moncface/scr). They apply to all SCR implementations, including LNDF.
 
 LNDF operates under five communication principles that govern what an LLM may and may not infer from omitted information:
 

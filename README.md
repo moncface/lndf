@@ -1,5 +1,7 @@
 # LNDF — LLM-Native Data Format
 
+[![License](https://img.shields.io/github/license/moncface/lndf)](https://github.com/moncface/lndf/blob/main/LICENSE)
+
 **A new paradigm for structured data in the age of AI.**
 
 ---

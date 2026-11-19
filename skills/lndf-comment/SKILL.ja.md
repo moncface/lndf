@@ -1,6 +1,6 @@
 ---
 name: lndf-comment
-description: コードを書く・変える時に、判断が発生した箇所へ LNDF コメント(@lndf: 4種)を置く規約。Write/Edit でソースコードを扱う全ての場面で適用する。
+description: "コードを書く・変える時に、判断が発生した箇所へ LNDF コメント(@lndf: 4種)を置く規約。Write/Edit でソースコードを扱う全ての場面で適用する。"
 ---
 
 # lndf-comment — コード内の判断継承

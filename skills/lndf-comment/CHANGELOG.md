@@ -56,3 +56,6 @@ Install:
 - The "Public repositories" section of v0.2.7 is in both SKILL.md and SKILL.ja.md
 - Fit for a public repo: examples cite a public target (an example.com URL) instead of a numbered record ID, the example deadline names a generic reader and store, the validate.py path is written with `$HOME`, and References point at the LNDF README instead of internal records and an unpublished sibling skill
 - validate.py: the two Japanese comments are now in English. The checks do not change
+
+## v0.2.9 — 2026-11-20
+- SKILL.ja.md: the front matter `description` value is now in double quotes. Its `(@lndf: 4種)` has a colon followed by a space, which YAML reads as a key separator in an unquoted value, so the front matter did not parse

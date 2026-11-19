@@ -1,0 +1,3 @@
+LNDF-why-not: SetTimer polling | WM_CLIPBOARDUPDATE fires only on change, no idle cost
+# a comment line
+LNDF-ref: https://example.com/decisions/7

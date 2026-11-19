@@ -1,0 +1,41 @@
+#!/bin/sh
+# lndf-comment: commit-msg gate. Rejects a commit whose LNDF-* trailers are malformed.
+# Install (pick one):
+#   cp hooks/commit-msg .git/hooks/commit-msg && chmod +x .git/hooks/commit-msg
+#   git config core.hooksPath <dir containing this file>
+#
+# Set LNDF_VALIDATE to the validate.py path if the skill folder is elsewhere.
+# Set LNDF_REQUIRE=1 to demand at least one trailer per non-exempt commit.
+
+# @lndf:why-not require python for every commit | the hook is installed globally; a machine without python would block commits in unrelated repos. Only messages carrying LNDF lines need validation
+if [ "${LNDF_REQUIRE:-0}" != "1" ] && ! grep -qi '^LNDF-' "$1"; then
+  exit 0
+fi
+
+# @lndf:why-not hardcode one skill path | Claude Code reads ~/.claude/skills, Codex reads ~/.agents/skills and <repo>/.agents/skills; any one copy is enough to validate
+VALIDATE=""
+for v in "$LNDF_VALIDATE" \
+         "$HOME/.claude/skills/lndf-comment/validate.py" \
+         "$HOME/.agents/skills/lndf-comment/validate.py" \
+         "$(git rev-parse --show-toplevel 2>/dev/null)/.agents/skills/lndf-comment/validate.py"; do
+  if [ -n "$v" ] && [ -f "$v" ]; then VALIDATE="$v"; break; fi
+done
+if [ -z "$VALIDATE" ]; then
+  echo "lndf-comment: validate.py not found (set LNDF_VALIDATE)" >&2
+  exit 1
+fi
+
+# @lndf:why-not python3 first | on Windows "python3" may resolve to the Microsoft Store stub; probe each candidate before use
+PY=""
+for c in python py python3; do
+  if command -v "$c" >/dev/null 2>&1 && "$c" -c "import sys" >/dev/null 2>&1; then PY="$c"; break; fi
+done
+if [ -z "$PY" ]; then
+  echo "lndf-comment: no working python found (tried python, py, python3)" >&2
+  exit 1
+fi
+if [ "${LNDF_REQUIRE:-0}" = "1" ]; then
+  exec "$PY" "$VALIDATE" --commit-msg "$1" --require
+else
+  exec "$PY" "$VALIDATE" --commit-msg "$1"
+fi

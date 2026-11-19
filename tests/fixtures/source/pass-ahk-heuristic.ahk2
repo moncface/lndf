@@ -1,0 +1,10 @@
+^+v::{
+    savedClipboard := ClipboardAll()
+    try {
+        Send "^v"
+        ; @lndf:heuristic 100ms | unmeasured; most apps read the clipboard within one paste event
+        Sleep 100
+    } finally {
+        A_Clipboard := savedClipboard
+    }
+}

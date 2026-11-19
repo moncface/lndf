@@ -1,0 +1,3 @@
+docs: describe plain paste hotkey
+
+README with the hotkey and behaviour.

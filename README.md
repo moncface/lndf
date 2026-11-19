@@ -2,19 +2,32 @@
 
 [![License](https://img.shields.io/github/license/moncface/lndf)](https://github.com/moncface/lndf/blob/main/LICENSE)
 
-**A new paradigm for structured data in the age of AI.**
+**Write only what the LLM cannot infer.**
+
+Specification v0.2 (written 2026-10, published 2026-11). v0.1 (2026-03) is preserved in the git history and summarised in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
 ## What is LNDF?
 
-LNDF (LLM-Native Data Format) is a design philosophy for structured data formats that treat Large Language Models as the primary parser.
+LNDF (LLM-Native Data Format) is a format discipline for text that a Large Language Model will read. Its single rule: **the text carries only what the reader cannot infer.** Everything an LLM already knows — language syntax, platform conventions, the contents of the files it can open, the state of the repository it can query — is left out.
 
-Traditional data formats (JSON, XML, YAML, Protocol Buffers) are designed for deterministic parsers that have zero world knowledge. Every value must be explicitly stated. Every relationship must be formally declared. Ambiguity is an error.
+v0.1 applied this rule to data: describe a UI by intent instead of pixel values, describe a project by a dozen key:value lines instead of a log. Six months of daily use with coding agents changed what the rule points at. Once an agent can read the repository itself, most *data* is inferable. What it cannot infer is the **judgment** behind the data: which alternative was rejected and why, which external constraint forced a shape, why a threshold is 300 and not 100, which workaround is temporary and until when.
 
-LNDF inverts this assumption. The parser — an LLM — possesses vast world knowledge. Therefore, **any information the LLM already knows does not need to be in the data**. The format carries only what the LLM cannot infer: **human intent**.
+So v0.2 makes judgment the primary payload. LNDF records are short lines, placed where the judgment happened, in four closed kinds:
 
-LNDF is the first implementation of [Shared Context Reduction (SCR)](https://github.com/moncface/scr) — the general principle of eliminating mutually known information between communicating agents. The Five Communication Safety Principles documented below are formally defined in the SCR specification and apply to all SCR implementations.
+| kind | records | example |
+|---|---|---|
+| `why-not` | a rejected alternative and the reason | `why-not Promise.all \| one failure must not reject the whole batch` |
+| `constraint` | an external source and what it forces | `constraint Chrome MV3 \| service worker cannot stay alive; use alarms` |
+| `heuristic` | a number and its basis | `heuristic 300ms \| perceived flicker threshold (n=5, 2026-04-12)` |
+| `temporal` | a deadline and what to do after it | `temporal 2026-12-01 \| remove this branch after Auth v3 migration` |
+
+The same four kinds appear on three surfaces — a comment above the line, a trailer at the end of a commit message, and a standalone `.lndf` file — with one grammar and one validator. See [Reference Implementation](#reference-implementation-lndf-comment).
+
+The first purpose is **continuity**: the next session, the next agent, or the next model picks up the judgment without re-deriving it. Token reduction follows, but it is a by-product, not the goal.
+
+LNDF is an implementation of [Shared Context Reduction (SCR)](https://github.com/moncface/scr) — the general principle of not transmitting what both parties already know. The Five Communication Safety Principles below are defined in the SCR specification and apply to every SCR implementation.
 
 ---
 
@@ -24,15 +37,17 @@ Every existing data format answers the question:
 *"How do I give a machine all the information it needs?"*
 
 LNDF answers a different question:
-*"What is the minimum I need to say for an intelligent parser to understand my intent?"*
+*"What is the minimum I need to say for an intelligent reader to understand my intent?"*
 
-This is not syntactic compression. Syntactic compression preserves all information in a smaller encoding. LNDF performs **semantic compression** — it omits information entirely, using the parser's world knowledge as a decompression dictionary. The distinction is fundamental: syntactic compression reduces the size of the message; semantic compression reduces the message itself.
+This is not syntactic compression. Syntactic compression preserves all information in a smaller encoding. LNDF performs **semantic compression** — it omits information entirely, using the reader's world knowledge and its access to the environment as the decompression dictionary. The distinction is fundamental: syntactic compression reduces the size of the message; semantic compression reduces the message itself.
 
-As a consequence, LNDF is a philosophy, not an implementation. There is no schema to validate against, no parser to install, no test suite to pass. The "specification" is a set of principles. The implementation is the LLM itself.
+The consequence that took six months to see: when the reader can look at the code, the git history and the test output on its own, the part of the message that survives semantic compression is almost entirely *why*. LNDF v0.2 is the format of that residue.
 
 ---
 
 ## Principles
+
+The six principles of v0.1 stand. Principle 2 — omit what the reader already knows — is the governing one; the others are its consequences for particular cases. The v0.1 examples below describe data (UI intent, project state); v0.2 applies the same principles to judgment, where "what the reader already knows" now includes everything it can read from the repository.
 
 ### 1. Intent over Data
 
@@ -103,6 +118,8 @@ LNDF contains only intent. Because details are omitted, humans grasp the full pi
 
 A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives 35 tokens and fully restores project context. No other format achieves this simultaneously.
 
+The same holds for a judgment line. `why-not Promise.all | one failure must not reject the whole batch` is read by a maintainer in two seconds and by an agent as a constraint it must not undo. Neither reader needs the discussion that produced it.
+
 | Metric | Conventional (logs/specs) | LNDF |
 |--------|--------------------------|------|
 | Human review time | 10–20 minutes | 10 seconds |
@@ -131,11 +148,13 @@ Specification (input quality)  →  .lndf (intent conduit)  →  LLM (meaning ex
 
 The specification layer (skill files, presets, session history) ensures input quality and controls variance. The .lndf file carries only the minimal intent. The LLM expands intent into full output using its world knowledge. Each layer has a single responsibility. .lndf does not control variance — the specification does. .lndf does not interpret meaning — the LLM does. .lndf is a transparent pipe between the two.
 
+In v0.2 the three stages read: the skill (`SKILL.md`) says what counts as a judgment and how to write it; the record (comment, trailer or `.lndf` file) carries only that judgment; the agent that reads it restores the reasoning and acts. The validator sits between the second and third stage and lets through only well-formed records.
+
 ---
 
 ## Token Economics
 
-The practical consequence of the intent-over-data principle is dramatic token reduction. Structured data sent to LLMs via API carries a direct cost per token.
+Reduction is a by-product. The first purpose of LNDF is continuity — carrying judgment across the boundary of a session, an agent or a model without re-deriving it. That said, the practical consequence of the intent-over-data principle is dramatic token reduction. Structured data sent to LLMs via API carries a direct cost per token.
 
 | Approach | Relative Token Count | Relative Cost |
 |----------|---------------------|---------------|
@@ -148,95 +167,118 @@ The practical consequence of the intent-over-data principle is dramatic token re
 
 The gap between LNDF and existing optimization approaches (TOON, Morph Compact, LLMLingua) is not incremental. It is structural. Existing approaches compress the same information. LNDF transmits less information.
 
+In the v0.2 setting the saving has a different shape: an agent that receives a handful of judgment lines does not re-explore the history to reconstruct them. The amount saved scales with the number of hand-offs between agents, which is why it was invisible while agents were used one at a time.
+
 ---
 
-## Reference Implementation: Mon CLI
 
-[Mon CLI](https://github.com/moncface/mon-tab) (`npm install -g mon-tab`) is the first tooling implementation of LNDF principles, applied to project state distillation for AI coding sessions.
-
-### Project State Distillation
-
-`mon ld` generates a `.lndf` file from git metadata, package.json, and test results:
-
-```
 ---
-mon-tab
-branch:main
-last:feat: add test result distillation to mon ld
-changed:commands/ld.js,package.json
-stack:chrome-ext
-test:pass
-status:active development
+
+## Reference Implementation: lndf-comment
+
+The reference implementation of v0.2 is the `lndf-comment` agent skill in [`skills/lndf-comment/`](skills/lndf-comment/). It consists of the rules an agent reads before writing code or committing (`SKILL.md`), a deterministic validator (`validate.py`), a `commit-msg` git hook, and the text to paste into `AGENTS.md`. Nothing in it calls an LLM; the skill tells the writer what to record, and the validator refuses what is malformed. The writer is usually a coding agent (Claude Code, Codex, or any agent that reads `AGENTS.md`), so the recording cost falls on the agent, not on the human.
+
+### One grammar, three surfaces
+
+```
+<kind> <value> | <reason>
+```
+
+Exactly one `|`. Left of it the value, right of it the reason. One judgment per line. Reasons are written in English. The four kinds are a closed set; if none fits, it is not a judgment but an explanation, and it is not written.
+
+| surface | form | what it records | lifetime |
+|---|---|---|---|
+| in-code comment | `// @lndf:<kind> <value> \| <reason>` directly above the line | why **this place** is the way it is | with the code |
+| commit trailer | `LNDF-<kind>: <value> \| <reason>` in the final paragraph of the commit message | why **this change** happened, what it rejected | with the history, even after the code is gone |
+| `.lndf` file | the same trailer lines, standalone | judgment in transit between agents or stores | until consumed |
+
+`constraint` and `heuristic` belong to the place (the comment). `why-not` and `temporal` belong to the change (the trailer). A trailer `LNDF-heuristic` is written only when an existing number changes (`100ms -> 250ms | reason`). The same judgment is never written on both surfaces.
+
+A fifth trailer key, `LNDF-ref: <id>`, points at the decision a commit executes (a memory record, a spec id, a URL or a commit SHA). It takes a bare id, no `|`.
+
+### Example
+
+```js
+// @lndf:constraint Chrome MV3 | service worker cannot stay alive; use alarms
+chrome.alarms.create("tick", { periodInMinutes: 1 });
+
+// @lndf:heuristic 100ms | unmeasured; most apps read the clipboard within one paste event, raise it if a paste comes out formatted
+await sleep(100);
+```
+
+```
+feat(collect): read decisions from git trailers
+
+LNDF-why-not: parse JSONL transcripts only | Codex workers have no JSONL; git log is the one source all agents share
+LNDF-temporal: 2026-12-31 | drop the legacy reader once the new store is verified
+LNDF-ref: https://example.com/decisions/7
+```
+
+Because trailers are a git-native structure, git itself can query them:
+
+```
+git log --format='%h %(trailers:key=LNDF-temporal,valueonly)' | grep .     # every deadline
+git log --format='%(trailers:key=LNDF-why-not,valueonly)' | grep .         # every rejected alternative
+```
+
+### What is not written
+
+- what the code does (that is what the code is for), docstrings, parameter lists
+- defaults taken as they are, obvious choices
+- a reason the writer does not have (write nothing and ask; never invent one)
+- a `TODO` without a date (if it has a date it is `temporal`; if not, it is not LNDF)
+- secret values; the validator refuses lines that look like keys or tokens
+- numbers the writer never measured, unless the reason starts with `unmeasured;` so the guess can be found later
+
+### Validation
+
+`validate.py` checks the grammar on all three surfaces and exits non-zero on the first malformed line: unknown kind, missing or doubled `|`, empty value or reason, an expired `temporal` date, a control character inside a line (a shell-expanded escape), or a probable secret. For commit messages it also refuses LNDF lines placed outside the final paragraph, which git would not parse as trailers.
+
+The `commit-msg` hook runs the validator on every commit. It passes messages that contain no LNDF line without starting Python, so installing it globally costs nothing on commits that record no judgment. Validation checks shape, not truth: a well-formed reason can still be wrong, and reviewing reasons is a job for a reviewer, human or agent, not for the validator.
+
+### Distribution
+
+The skill is plain files. Agents discover it through their own documented paths:
+
+| agent | global | per repository |
+|---|---|---|
+| Claude Code | `~/.claude/skills/lndf-comment/` | `.claude/skills/lndf-comment/` |
+| Codex | `~/.agents/skills/lndf-comment/` | `.agents/skills/lndf-comment/` |
+
+The `AGENTS.md` text in `skills/lndf-comment/AGENTS.snippet.md` goes into the global `AGENTS.md` of the agent's home and into the repository's `AGENTS.md`. The git hook goes into the global hooks directory (`core.hooksPath`), so every agent's commits on the machine pass through the same gate. Repository copies are pinned to LF line endings and executable mode with `.gitattributes` and `git update-index --chmod=+x`; see `SKILL.md`.
+
 ---
-```
 
-Format: key:value, one per line. No quotes, no braces. First line = project name. Absent fields = defaults (the LLM infers).
+## The `.lndf` File
 
-### Debug Distillation (v0.5.2)
-
-`mon ld` automatically runs `npm test` if `scripts.test` exists:
-
-| Field | Meaning |
-|-------|---------|
-| `test:pass` | All tests passing (exit 0) |
-| `test:fail` | Tests failing (exit 1) |
-| `test:timeout` | Tests exceeded 30s |
-| `error:...` | stderr tail, last 3 lines (only when test:fail) |
-
-- No `scripts.test` in package.json → `test:` and `error:` fields omitted (Defaults Are Silence)
-- `test:fail` or `test:timeout` overrides status to `debugging`
-
-### Commands
-
-| Command | Action |
-|---------|--------|
-| `mon ld` | Distill project state → .lndf/current.lndf |
-| `mon lv` | View current distillation |
-| `mon lv --reindex` | Build SQLite index from hako/ frontmatter |
-| `mon lv --tag <tag>` | Search hako by tag |
-| `mon lv --after <date>` | Search hako by date |
-| `mon lv --stats` | Show hako index statistics |
-| `mon lc` | Distill + copy to clipboard |
-| `mon lp create <name>` | Create cross-project collection |
-| `mon lp add <name> <path>` | Add hako to project |
-| `mon lp dump <name>` | Concatenate all hako for LLM context |
-| `mon lp list` | List all projects |
-
-### File Locations
+A `.lndf` file is the trailer paragraph of a commit, standing alone:
 
 ```
-Project-local:
-  {project-root}/.lndf/
-    ├── current.lndf
-    └── history/YYYY-MM-DDTHHMMSS.lndf
-
-User-global:
-  ~/.mon/
-    ├── hako/        ← individual distillations / notes
-    └── projects/    ← project files (lists of hako paths)
+LNDF-why-not: SetTimer polling | WM_CLIPBOARDUPDATE fires only on change, no idle cost
+LNDF-constraint: Windows core.autocrlf=true | a CRLF checkout breaks the hook shebang
+LNDF-ref: https://example.com/decisions/7
 ```
 
-### AI Coding Session Workflow
+One judgment per line, the same five keys, the same validator (`validate.py --commit-msg file.lndf`). Lines starting with `#` are comments.
 
-```bash
-mon lv                    # load project state
-mon lp list               # check active cross-project work
-mon lp dump <name>        # load full project context
-# ... work with AI coding tool ...
-mon ld                    # save project state
-```
+The file is a **transport**, not a ledger. It carries judgment between agents (an orchestrator's task result, a message board post, a hand-off to a machine that cannot reach the shared store). Inside a repository the ledger is the git history; across repositories it is whatever store the team uses. A `.lndf` file is not committed as a running log — v0.1's `.lndf/history/` is retired for that reason: it duplicated what git already keeps, and it grew without bound.
+
+### Conversational surface
+
+The same discipline runs in the author's chat sessions as a one- or two-line footer on every reply (intent, topic, tier, turn count; and for decisions, the reference, the rejected option, the next step and the deadline), with tiered records in a database for hand-off between sessions. That layer has been in daily operation since early 2026 and is the origin of the four kinds. Its public specification will be published separately; this repository documents the code-side surfaces.
 
 ---
 
 ## Broader Applicability
 
-While Mon CLI targets project state distillation, the LNDF philosophy applies wherever LLMs consume structured data:
+The reference implementation targets code and commits, but the discipline applies wherever an LLM consumes text written by someone who knows more than it does:
 
 - Infrastructure definitions (cloud configuration, deployment specs)
 - API contract descriptions
 - Test case specifications
 - Data transformation rules
 - Content structure definitions
+- Agent-to-agent hand-offs (task results, review verdicts, message boards)
 - Robotics and physical AI feedback monitoring (status distillation, anomaly reporting)
 
 Any domain where the LLM possesses deep knowledge is a candidate for LNDF-style format design.
@@ -286,15 +328,17 @@ When input permits multiple interpretations, the LLM must select the lowest-risk
 ### 5. Precision Guarantee
 Numbers, negations, conditions, and exceptions are never inferred. If a value requires precision, it must be explicitly stated. "timeout:long" must not be resolved by the LLM — it must ask for a specific value.
 
-These principles are inherently satisfied by LNDF's existing design: key-value structure prevents implicature, technical domain scope prevents cultural ambiguity, and the "Defaults Are Silence" principle ensures precision-critical values are always explicit.
+These principles are inherently satisfied by LNDF's design: the `value | reason` structure prevents implicature, the closed set of kinds prevents cultural ambiguity, and the `heuristic` kind with its `unmeasured;` marker ensures a precision-critical number is never silently a guess.
 
 Theoretical foundations: Grice's Cooperative Principle (1975), Austin/Searle's Speech Act Theory (1962/1969), Brown & Levinson's Politeness Theory (1987), Sperber & Wilson's Relevance Theory (1986).
 
 ---
 
+---
+
 ## Status
 
-LNDF is a design philosophy in active development. Mon CLI v0.5.2 implements project state distillation with debug awareness. 47 commands available.
+v0.2. The reference implementation (`skills/lndf-comment`) is in daily use by the author's coding agents; its validator and hook are the only tooling. A command-line tool (`validate`, `parse`, `distill`, `collect`) that reads judgment from git trailers and transcripts is planned. The v0.1 implementation in Mon CLI (`mon ld` / `lv` / `lc` / `lp` / `lt`) is retired: it recorded repository state the agents can now read for themselves, which is exactly what the governing principle says not to write.
 
 ---
 
@@ -318,7 +362,7 @@ This specification is maintained by Hiroaki Tachibana (moncface).
 
 - Change proposals: Submit via GitHub Issues on this repository
 - Final decision authority: The maintainer (BDFL model)
-- Versioning: Semantic versioning (current: v0.1)
+- Versioning: Semantic versioning (current: v0.2, see CHANGELOG.md)
 - Canonical URL: This README is the authoritative specification
 
 ---
@@ -327,7 +371,7 @@ This specification is maintained by Hiroaki Tachibana (moncface).
 
 Hiroaki Tachibana (pen name) / moncface
 Real name available upon request.
-March 2026
+v0.1 March 2026 · v0.2 written October 2026, published November 2026
 
 ---
 

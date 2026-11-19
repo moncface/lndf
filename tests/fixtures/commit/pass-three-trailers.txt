@@ -1,0 +1,7 @@
+feat(collect): read decisions from git trailers
+
+body line
+
+LNDF-why-not: parse JSONL only | Codex has no JSONL; git log is shared
+LNDF-temporal: 2099-01-31 | drop legacy reader after new store verified
+LNDF-ref: https://example.com/decisions/7

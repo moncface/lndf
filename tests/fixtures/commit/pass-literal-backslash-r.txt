@@ -1,0 +1,4 @@
+chore(agents): pin LF
+
+LNDF-constraint: core.autocrlf=true on Windows | a CRLF checkout turns the shebang into "#!/bin/sh\r" and the hook stops running
+LNDF-ref: https://example.com/decisions/571

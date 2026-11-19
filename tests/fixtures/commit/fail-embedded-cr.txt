@@ -1,0 +1,4 @@
+chore: x
+
+LNDF-constraint: autocrlf | turns "#!/bin/sh" into broken
+LNDF-ref: https://example.com/decisions/571

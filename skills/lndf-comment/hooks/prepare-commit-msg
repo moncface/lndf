@@ -1,0 +1,22 @@
+#!/bin/sh
+# lndf-comment: optional reminder. Appends commented-out trailer keys to a fresh
+# commit message so the writer (human or agent) sees the vocabulary. Git strips
+# '#' lines, so leaving them untouched changes nothing.
+# Install: cp hooks/prepare-commit-msg .git/hooks/ && chmod +x .git/hooks/prepare-commit-msg
+
+MSG="$1"
+SOURCE="$2"
+
+# @lndf:constraint git prepare-commit-msg contract | $2 is empty only for a plain `git commit`; skip merge/squash/-m/-F so we never edit a supplied message
+[ -n "$SOURCE" ] && exit 0
+
+cat >> "$MSG" <<'EOF'
+#
+# LNDF trailers (final paragraph, one judgment per line, English; delete if none):
+#   LNDF-why-not: <rejected option> | <reason>
+#   LNDF-constraint: <source> | <what it forces>
+#   LNDF-heuristic: <number> | <basis (n, date)>
+#   LNDF-temporal: YYYY-MM-DD | <what to do after>
+#   LNDF-ref: memory:NNN
+EOF
+exit 0

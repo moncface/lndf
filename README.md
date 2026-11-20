@@ -338,7 +338,7 @@ Theoretical foundations: Grice's Cooperative Principle (1975), Austin/Searle's S
 
 ## Status
 
-v0.2. The reference implementation (`skills/lndf-comment`) is in daily use by the author's coding agents. The command-line tool in [`cli/`](cli/) has one command so far, `lndf validate`: a TypeScript port of `validate.py` with the same rules and exit codes, held to the same fixtures (`python3 tests/run.py --validator tests/lndf_cli.py`). `validate.py` remains the `commit-msg` gate. `parse`, `distill` and `collect`, which read judgment from git trailers and transcripts, are not written yet. The v0.1 implementation in Mon CLI (`mon ld` / `lv` / `lc` / `lp` / `lt`) is retired: it recorded repository state the agents can now read for themselves, which is exactly what the governing principle says not to write.
+v0.2. The reference implementation (`skills/lndf-comment`) is in daily use by the author's coding agents. The command-line tool in [`cli/`](cli/) has one command so far, `lndf validate`: a TypeScript port of `validate.py` with the same rules and exit codes, held to the same fixtures (`python3 tests/run.py --validator tests/lndf_cli.py`). It is on npm as `lndf`: run it with `npx lndf validate <file-or-dir>`, or install it with `npm install -g lndf`. `validate.py` remains the `commit-msg` gate. `parse`, `distill` and `collect`, which read judgment from git trailers and transcripts, are not written yet. The v0.1 implementation in Mon CLI (`mon ld` / `lv` / `lc` / `lp` / `lt`) is retired: it recorded repository state the agents can now read for themselves, which is exactly what the governing principle says not to write.
 
 ---
 

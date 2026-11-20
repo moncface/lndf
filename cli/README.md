@@ -71,6 +71,10 @@ A line that looks like it holds a key or token is written with `[REDACTED]` as v
 
 The summary line (`PASS (...)` or `FAIL (...)`) goes to stdout.
 
+### Byte order mark
+
+A leading UTF-8 byte order mark is not removed; it stays part of the first line, as it does in `validate.py`. In a source file the records are still found. In a commit message or a `.lndf` file, the first line then does not start with `LNDF-` or `#`, so a trailer there is not recognised and a comment there is not ignored.
+
 ## Parse (0.2.0 and later)
 
 `lndf parse` prints the same records as a JSON array on stdout. It does not
@@ -131,10 +135,6 @@ For example, `lndf parse --commit-msg tests/fixtures/commit/pass-three-trailers.
 Exit status: 0 when the records were printed (an empty array included);
 1 when a file cannot be read, the directory is not in a git repository, or
 git is missing or fails, with nothing on stdout; 2 on a usage error.
-
-### Byte order mark
-
-A leading UTF-8 byte order mark is not removed; it stays part of the first line, as it does in `validate.py`. In a source file the records are still found. In a commit message or a `.lndf` file, the first line then does not start with `LNDF-` or `#`, so a trailer there is not recognised and a comment there is not ignored.
 
 ## Differences from validate.py
 

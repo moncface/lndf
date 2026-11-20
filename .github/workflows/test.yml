@@ -49,3 +49,4 @@ jobs:
           test "$(head -n 1 node_modules/lndf/dist/cli.js)" = "#!/usr/bin/env node"
           test "$(npx --no-install lndf --version)" = "$version"
           npx --no-install lndf validate "$GITHUB_WORKSPACE/tests/fixtures/source/pass-js-two-kinds.js" --today 2026-10-03
+          npx --no-install lndf parse --commit-msg "$GITHUB_WORKSPACE/tests/fixtures/commit/pass-three-trailers.txt"

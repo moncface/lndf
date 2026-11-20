@@ -25,6 +25,16 @@ export interface CheckResult {
   failures: string[];
 }
 
+/** One judgment line. `errors` is what validate reports; `parse` reads `secret` and `shape`. */
+export interface LineResult {
+  entry: Entry;
+  errors: string[];
+  /** Label of the secret pattern the line matches, or null. */
+  secret: string | null;
+  /** The line's errors without the secret check, computed even when a secret is found. */
+  shape: string[];
+}
+
 // ---------------------------------------------------------------- Python regex semantics
 
 // @lndf:constraint the whitespace set of Python's \s and str.strip() | JS \s and trim() differ: they remove U+FEFF and keep U+001C-U+001F and U+0085
@@ -142,24 +152,26 @@ function isKind(kind: string): boolean {
 
 // ---------------------------------------------------------------- source mode
 
-export function checkLine(path: string, lineno: number, text: string, today: string): { entry: Entry; errors: string[] } | null {
+export function checkLine(path: string, lineno: number, text: string, today: string): LineResult | null {
   const m = LINE_RE.exec(text);
   if (!m) return null;
   const kind = m[1] ?? "";
   const rest = pyStrip(m[2] ?? "").replace(COMMENT_CLOSE_RE, "");
+  const shape: string[] = [];
+  const ctrl = findControl(rest);
+  if (ctrl) shape.push(`control character ${ctrl} inside the line; an escape was probably expanded by the shell`);
+  if (!isKind(kind)) shape.push(`unknown kind '${kind}' (allowed: ${KINDS.join(", ")})`);
+  const [value, reason] = checkValueReason(kind, rest, today, shape);
   const label = findSecret(rest);
   if (label) {
     return {
       entry: { path, line: lineno, kind, value: "[REDACTED]", reason: "[REDACTED]" },
       errors: [`possible secret (${label}) in @lndf line; value not shown. Remove it from the comment`],
+      secret: label,
+      shape,
     };
   }
-  const errors: string[] = [];
-  const ctrl = findControl(rest);
-  if (ctrl) errors.push(`control character ${ctrl} inside the line; an escape was probably expanded by the shell`);
-  if (!isKind(kind)) errors.push(`unknown kind '${kind}' (allowed: ${KINDS.join(", ")})`);
-  const [value, reason] = checkValueReason(kind, rest, today, errors);
-  return { entry: { path, line: lineno, kind, value, reason }, errors };
+  return { entry: { path, line: lineno, kind, value, reason }, errors: shape, secret: null, shape };
 }
 
 /** Lines as Python's universal-newline reader yields them, without the line break. */
@@ -209,31 +221,49 @@ function pySplitExt(name: string): string {
 
 const COMMIT_PATH = "<commit-msg>";
 
-function checkTrailerLine(lineno: number, kind: string, restRaw: string, today: string): { entry: Entry; errors: string[] } {
+function checkTrailerLine(lineno: number, kind: string, restRaw: string, today: string): LineResult {
   const rest = pyStrip(restRaw);
+  const shape: string[] = [];
+  const ctrl = findControl(rest);
+  if (ctrl) {
+    shape.push(`control character ${ctrl} inside the trailer; a shell escape was probably expanded. Write the message to a file and use git commit -F`);
+  }
+  let value = rest;
+  let reason = "";
+  if (kind === "ref") {
+    if (!rest) shape.push("empty LNDF-ref value (expected memory:NNN, spec id, URL or SHA)");
+    if (rest.includes("|")) shape.push("LNDF-ref takes a bare id, not 'value | reason'");
+  } else {
+    if (!isKind(kind)) shape.push(`unknown trailer kind '${kind}' (allowed: ${KINDS.join(", ")}, ref)`);
+    [value, reason] = checkValueReason(kind, rest, today, shape);
+  }
   const label = findSecret(rest);
   if (label) {
     return {
       entry: { path: COMMIT_PATH, line: lineno, kind, value: "[REDACTED]", reason: "[REDACTED]" },
       errors: [`possible secret (${label}) in LNDF trailer; value not shown. Remove it`],
+      secret: label,
+      shape,
     };
   }
-  const errors: string[] = [];
-  const ctrl = findControl(rest);
-  if (ctrl) {
-    errors.push(`control character ${ctrl} inside the trailer; a shell escape was probably expanded. Write the message to a file and use git commit -F`);
-  }
-  if (kind === "ref") {
-    if (!rest) errors.push("empty LNDF-ref value (expected memory:NNN, spec id, URL or SHA)");
-    if (rest.includes("|")) errors.push("LNDF-ref takes a bare id, not 'value | reason'");
-    return { entry: { path: COMMIT_PATH, line: lineno, kind, value: rest, reason: "" }, errors };
-  }
-  if (!isKind(kind)) errors.push(`unknown trailer kind '${kind}' (allowed: ${KINDS.join(", ")}, ref)`);
-  const [value, reason] = checkValueReason(kind, rest, today, errors);
-  return { entry: { path: COMMIT_PATH, line: lineno, kind, value, reason }, errors };
+  return { entry: { path: COMMIT_PATH, line: lineno, kind, value, reason }, errors: shape, secret: null, shape };
 }
 
-export function checkCommitMsg(text: string, today: string, require: boolean): CheckResult {
+export const OUTSIDE_FINAL_PARAGRAPH = "LNDF trailer outside the final paragraph; git will not parse it. Move it to the end";
+
+export interface CommitScan {
+  /** Nothing is left once comment lines and trailing blank lines are removed. */
+  empty: boolean;
+  /** The first line that is not a comment, stripped. */
+  subject: string;
+  /** Each LNDF- line of the final paragraph, in order; entry.path is "<commit-msg>". */
+  trailers: LineResult[];
+  /** Line numbers of LNDF- lines above the final paragraph. */
+  outside: number[];
+}
+
+/** Read the LNDF- trailers of a commit message the way validate does, without judging the message as a whole. */
+export function scanCommitMsg(text: string, today: string): CommitScan {
   // @lndf:why-not splitting on every line break | a lone CR inside a trailer must stay in the line so the control-character check sees it
   const raw = text.split("\n").map((l) => (l.endsWith("\r") ? l.slice(0, -1) : l));
   const lines: Array<[number, string]> = [];
@@ -241,7 +271,7 @@ export function checkCommitMsg(text: string, today: string, require: boolean): C
     if (!l.startsWith(COMMENT_CHAR)) lines.push([i + 1, l]);
   });
   while (lines.length && !pyStrip(lines[lines.length - 1]?.[1] ?? "")) lines.pop();
-  if (!lines.length) return { entries: [], failures: ["empty commit message"] };
+  if (!lines.length) return { empty: true, subject: "", trailers: [], outside: [] };
 
   let lastStart = lines.length;
   for (let idx = lines.length - 1; idx >= 0; idx--) {
@@ -249,25 +279,31 @@ export function checkCommitMsg(text: string, today: string, require: boolean): C
     lastStart = idx;
   }
 
-  const entries: Entry[] = [];
-  const failures: string[] = [];
+  const trailers: LineResult[] = [];
   for (const [lineno, l] of lines.slice(lastStart)) {
     const m = TRAILER_RE.exec(pyStrip(l));
     if (!m) continue;
-    const r = checkTrailerLine(lineno, (m[2] ?? "").toLowerCase(), m[3] ?? "", today);
-    entries.push(r.entry);
-    for (const e of r.errors) failures.push(`${COMMIT_PATH}:${lineno}: ${e}`);
+    trailers.push(checkTrailerLine(lineno, (m[2] ?? "").toLowerCase(), m[3] ?? "", today));
   }
+  const outside: number[] = [];
   for (const [lineno, l] of lines.slice(0, lastStart)) {
-    if (TRAILER_RE.test(pyStrip(l))) {
-      failures.push(`${COMMIT_PATH}:${lineno}: LNDF trailer outside the final paragraph; git will not parse it. Move it to the end`);
-    }
+    if (TRAILER_RE.test(pyStrip(l))) outside.push(lineno);
   }
-  if (require && !entries.length) {
-    const subject = pyStrip(lines[0]?.[1] ?? "");
-    if (!EXEMPT_SUBJECT_RE.test(subject)) {
-      failures.push(`${COMMIT_PATH}: --require: no LNDF-* trailer (add one, or use an exempt type: merge/revert/chore/style/docs)`);
-    }
+  return { empty: false, subject: pyStrip(lines[0]?.[1] ?? ""), trailers, outside };
+}
+
+export function checkCommitMsg(text: string, today: string, require: boolean): CheckResult {
+  const scan = scanCommitMsg(text, today);
+  if (scan.empty) return { entries: [], failures: ["empty commit message"] };
+  const entries: Entry[] = [];
+  const failures: string[] = [];
+  for (const r of scan.trailers) {
+    entries.push(r.entry);
+    for (const e of r.errors) failures.push(`${COMMIT_PATH}:${r.entry.line}: ${e}`);
+  }
+  for (const lineno of scan.outside) failures.push(`${COMMIT_PATH}:${lineno}: ${OUTSIDE_FINAL_PARAGRAPH}`);
+  if (require && !entries.length && !EXEMPT_SUBJECT_RE.test(scan.subject)) {
+    failures.push(`${COMMIT_PATH}: --require: no LNDF-* trailer (add one, or use an exempt type: merge/revert/chore/style/docs)`);
   }
   return { entries, failures };
 }

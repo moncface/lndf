@@ -1,13 +1,14 @@
 {
   "name": "lndf",
-  "version": "0.1.0",
-  "description": "Validate LNDF judgment records: in-code comments, commit trailers and .lndf files. A port of the lndf-comment validator.",
+  "version": "0.2.0",
+  "description": "Validate and parse LNDF judgment records: in-code comments, commit trailers, .lndf files and git history. validate is a port of the lndf-comment validator.",
   "keywords": [
     "lndf",
     "llm",
     "coding-agent",
     "commit-trailer",
-    "validator"
+    "validator",
+    "parser"
   ],
   "homepage": "https://github.com/moncface/lndf#readme",
   "bugs": "https://github.com/moncface/lndf/issues",

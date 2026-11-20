@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // The lndf command line. This adapter owns everything that touches the
 // platform: arguments, files, the directory walk, output and the exit status.
-// The rules themselves live in ./commands/validate.ts.
+// The rules themselves live in ./commands/validate.ts and ./commands/parse.ts.
 
+import { spawnSync } from "node:child_process";
 import { lstatSync, opendirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { gitLogArgs, parseCommitMsg, parseGitLog, parseParseArgs, parseSource } from "./commands/parse.js";
 import {
   checkCommitMsg,
   checkSourceText,
@@ -20,11 +22,21 @@ const USAGE =
   "usage: lndf validate <file-or-dir>... [--index out.json] [--today YYYY-MM-DD]\n" +
   "       lndf validate --commit-msg <file> [--require] [--today YYYY-MM-DD]";
 
-const HELP = `lndf: check LNDF judgment records
+// @lndf:constraint the validate lines come first | scripts that match the start of the usage text keep working
+const FULL_USAGE =
+  USAGE + "\n" +
+  "       lndf parse <file-or-dir>...\n" +
+  "       lndf parse --commit-msg <file>\n" +
+  "       lndf parse --git [--range RANGE] [--max-count N]";
+
+const HELP = `lndf: check and read LNDF judgment records
 
 Usage:
   lndf validate <file-or-dir>... [--index out.json] [--today YYYY-MM-DD]
   lndf validate --commit-msg <file> [--require] [--today YYYY-MM-DD]
+  lndf parse <file-or-dir>...
+  lndf parse --commit-msg <file>
+  lndf parse --git [--range RANGE] [--max-count N]
   lndf --help | --version
 
 Source files: every line that contains @lndf:<kind> is checked for a known
@@ -48,9 +60,24 @@ Options:
                        style: or docs:
   -h, --help           show this help
 
+lndf parse prints the records as a JSON array on stdout, one object per line
+of judgment. It does not check them: a malformed line is left out and named on
+stderr, an expired temporal date is kept, and a value that looks like a secret
+is printed as [REDACTED]. An LNDF-ref trailer is a record of kind "ref" with an
+empty reason. --commit-msg reads one commit message or .lndf file.
+
+Parse options:
+  --git                read the trailers of the commits reachable from HEAD,
+                       newest first
+  --range RANGE        with --git, read RANGE instead of HEAD (for example
+                       main..feature)
+  --max-count N        with --git, read at most N commits
+
 lndf --version prints the version.
 
 Exit status: 0 = PASS, 1 = FAIL, 2 = usage error.
+lndf parse: 0 = printed (possibly []), 1 = a file cannot be read, or git is
+missing or fails, 2 = usage error.
 `;
 
 function out(line: string): void {
@@ -61,8 +88,8 @@ function err(line: string): void {
   process.stderr.write(line + "\n");
 }
 
-function usageError(message: string): number {
-  err(`${USAGE}\nlndf validate: error: ${message}`);
+function usageError(message: string, usage = USAGE, prog = "lndf validate"): number {
+  err(`${usage}\n${prog}: error: ${message}`);
   return 2;
 }
 
@@ -231,6 +258,116 @@ function runValidate(args: readonly string[]): number {
     : runSource(parsed.paths, parsed.index, today);
 }
 
+// ---------------------------------------------------------------- parse
+
+function printJson(records: readonly object[]): void {
+  process.stdout.write(JSON.stringify(records, null, 2) + "\n");
+}
+
+function parseFiles(paths: readonly string[]): number {
+  const records: object[] = [];
+  let unreadable = false;
+  for (const p of iterFiles(paths)) {
+    let text: string;
+    try {
+      text = readText(p);
+    } catch (e) {
+      err(`${p}: cannot read (${osError(e, p)})`);
+      unreadable = true;
+      continue;
+    }
+    const r = parseSource(p, text);
+    records.push(...r.records);
+    for (const s of r.skipped) err(s);
+  }
+  // @lndf:why-not printing the records of the files that could be read | a partial array on stdout looks complete to a script that ignores the exit status
+  if (unreadable) return 1;
+  printJson(records);
+  return 0;
+}
+
+function parseMessageFile(file: string): number {
+  let text: string;
+  try {
+    text = readText(file);
+  } catch (e) {
+    err(`${file}: cannot read (${osError(e, file)})`);
+    return 1;
+  }
+  const r = parseCommitMsg(file, text);
+  for (const s of r.skipped) err(s);
+  printJson(r.records);
+  return 0;
+}
+
+// @lndf:heuristic 512 MiB for the output of git log | unmeasured; far above the history of a typical repository, and --range or --max-count narrows a larger one
+const GIT_MAX_BUFFER = 512 * 1024 * 1024;
+
+interface GitRun {
+  status: number;
+  stdout: Buffer;
+  stderr: Buffer;
+}
+
+/** Run git in the current directory. Returns null, after saying why, when git cannot run. */
+function runGit(args: readonly string[]): GitRun | null {
+  const r = spawnSync("git", args, { maxBuffer: GIT_MAX_BUFFER, windowsHide: true });
+  if (r.error) {
+    const code = (r.error as { code?: unknown }).code;
+    if (code === "ENOENT") err("lndf parse: error: git not found");
+    else if (code === "ENOBUFS") err("lndf parse: error: the output of git log is larger than 512 MiB; narrow it with --range or --max-count");
+    else err(`lndf parse: error: cannot run git (${r.error.message})`);
+    return null;
+  }
+  return { status: r.status ?? 1, stdout: r.stdout, stderr: r.stderr };
+}
+
+function gitFailed(r: GitRun): number {
+  if (r.stderr.length) process.stderr.write(r.stderr);
+  else err(`lndf parse: error: git exited with status ${r.status}`);
+  return 1;
+}
+
+function parseGit(range: string | null, maxCount: number | null): number {
+  const head = runGit(["rev-parse", "--is-shallow-repository", "--verify", "--quiet", "HEAD"]);
+  if (!head) return 1;
+  // Status 1: HEAD names no commit yet. Anything else: not a repository, or git failed.
+  if (head.status !== 0 && head.status !== 1) return gitFailed(head);
+  // @lndf:constraint an unborn HEAD without --range prints [] | a new repository has no records, which is not an error; with --range, git log reports a bad range itself
+  if (head.status === 1 && range === null) {
+    printJson([]);
+    return 0;
+  }
+  const shallow = head.stdout.toString("utf8").split("\n")[0]?.trim() === "true";
+
+  const log = runGit(gitLogArgs(range, maxCount));
+  if (!log) return 1;
+  if (log.status !== 0) return gitFailed(log);
+  const r = parseGitLog(log.stdout);
+  if (!r) {
+    err("lndf parse: error: cannot read the output of git log");
+    return 1;
+  }
+  if (shallow) err("lndf parse: note: shallow clone; commits beyond the shallow boundary are not read");
+  for (const s of r.skipped) err(s);
+  printJson(r.records);
+  return 0;
+}
+
+function runParse(args: readonly string[]): number {
+  const parsed = parseParseArgs(args);
+  if (parsed.kind === "help") {
+    process.stdout.write(HELP);
+    return 0;
+  }
+  if (parsed.kind === "error") return usageError(parsed.message, FULL_USAGE, "lndf parse");
+  if (parsed.kind === "commit-msg") return parseMessageFile(parsed.file);
+  if (parsed.kind === "git") return parseGit(parsed.range, parsed.maxCount);
+  return parseFiles(parsed.paths);
+}
+
+// ---------------------------------------------------------------- main
+
 function main(argv: readonly string[]): number {
   const [command, ...rest] = argv;
   if (command === "--version") {
@@ -242,7 +379,8 @@ function main(argv: readonly string[]): number {
     return 0;
   }
   if (command === "validate") return runValidate(rest);
-  return usageError(command === undefined ? "no command given (see lndf --help)" : `unknown command ${pyRepr(command)} (see lndf --help)`);
+  if (command === "parse") return runParse(rest);
+  return usageError(command === undefined ? "no command given (see lndf --help)" : `unknown command ${pyRepr(command)} (see lndf --help)`, FULL_USAGE);
 }
 
 // @lndf:why-not process.exit() | it can cut off output still buffered for a pipe; setting exitCode lets Node flush first

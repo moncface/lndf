@@ -245,7 +245,11 @@ The skill is plain files. Agents discover it through their own documented paths:
 | Claude Code | `~/.claude/skills/lndf-comment/` | `.claude/skills/lndf-comment/` |
 | Codex | `~/.agents/skills/lndf-comment/` | `.agents/skills/lndf-comment/` |
 
-The `AGENTS.md` text in `skills/lndf-comment/AGENTS.snippet.md` goes into the global `AGENTS.md` of the agent's home and into the repository's `AGENTS.md`. The git hook goes into the global hooks directory (`core.hooksPath`), so every agent's commits on the machine pass through the same gate. Repository copies are pinned to LF line endings and executable mode with `.gitattributes` and `git update-index --chmod=+x`; see `SKILL.md`.
+The `AGENTS.md` text in `skills/lndf-comment/AGENTS.snippet.md` goes into the global `AGENTS.md` of the agent's home and into the repository's `AGENTS.md`.
+
+Claude Code v2.1.277 and later reads the repository's `AGENTS.md` only when there is no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in the working directory or above it; when one of them is there, it reads only the `CLAUDE.md` files by default. It reads `AGENTS.md` only from the working directory and the directories above it, so another agent's global `AGENTS.md` does not reach it ([Claude Code docs](https://code.claude.com/docs/en/memory#agents-md)). For Claude Code, the same text therefore also goes into the global `~/.claude/CLAUDE.md` and into the `CLAUDE.md` of a repository that has one, with the skill paths changed to `~/.claude/skills/lndf-comment/` and `.claude/skills/lndf-comment/`.
+
+The git hook goes into the global hooks directory (`core.hooksPath`), so every agent's commits on the machine pass through the same gate. Repository copies are pinned to LF line endings and executable mode with `.gitattributes` and `git update-index --chmod=+x`; see `SKILL.md`.
 
 ---
 

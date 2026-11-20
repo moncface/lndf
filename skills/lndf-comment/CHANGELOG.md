@@ -59,3 +59,9 @@ Install:
 
 ## v0.2.9 — 2026-11-20
 - SKILL.ja.md: the front matter `description` value is now in double quotes. Its `(@lndf: 4種)` has a colon followed by a space, which YAML reads as a key separator in an unquoted value, so the front matter did not parse
+
+## v0.2.10 — 2026-11-21
+- AGENTS.snippet.md: "Decision records (LNDF)" gains one item: before planning a change in a git repository, read the last 20 commits with their `LNDF-why-not` trailers. A rejected alternative recorded in a trailer sits in history, below later commits, where an agent planning a change does not look on its own
+- AGENTS.snippet.md (the part above `---`, which is not pasted) and README "Distribution": Claude Code v2.1.277 and later reads the repo's `AGENTS.md` only from the working directory and above it, and by default not when a `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` is there. For Claude Code the same text also goes into `~/.claude/CLAUDE.md` and into the `CLAUDE.md` of a repo that has one, with the skill paths under `.claude/skills/`
+- Measured only with the reading line in Claude Code's `CLAUDE.md`. Not measured through `AGENTS.md`, for Codex or for Claude Code
+- SKILL.md and SKILL.ja.md are unchanged. Their "Distributing to other agents" section still names only `AGENTS.md`

@@ -1,6 +1,15 @@
 # lndf CLI
 
-`lndf validate` checks LNDF judgment records: `@lndf:` comments in source files, and `LNDF-*` trailers in a commit message or a `.lndf` file. It is a TypeScript port of [`skills/lndf-comment/validate.py`](../skills/lndf-comment/validate.py) with the same rules, messages and exit codes, and both are held to the same fixtures. The record format is described in the [specification](../README.md).
+`lndf validate` checks LNDF judgment records: `@lndf:` comments in source files, and `LNDF-*` trailers in a commit message or a `.lndf` file. It is a TypeScript port of [`skills/lndf-comment/validate.py`](https://github.com/moncface/lndf/blob/main/skills/lndf-comment/validate.py) with the same rules, messages and exit codes, and both are held to the same fixtures. The record format is described in the [specification](https://github.com/moncface/lndf/blob/main/README.md).
+
+## Install
+
+Run it without installing, or install the `lndf` command globally:
+
+```
+npx lndf validate <file-or-dir>
+npm install -g lndf
+```
 
 ## Usage
 

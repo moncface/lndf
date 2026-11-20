@@ -1,3 +1,7 @@
 .DS_Store
 Thumbs.db
 *.log
+cli/node_modules/
+cli/dist/
+cli/LICENSE
+*.tgz

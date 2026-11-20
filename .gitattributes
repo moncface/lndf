@@ -3,3 +3,4 @@ tests/** text eol=lf
 *.md text eol=lf
 # @lndf:constraint git eol conversion | fixtures are byte-exact validator input; under tests/** text eol=lf, pass-crlf.txt was stored as LF and still passed without testing CRLF
 tests/fixtures/** -text
+cli/** text eol=lf

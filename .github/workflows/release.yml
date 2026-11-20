@@ -1,0 +1,54 @@
+name: Publish to npm
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: cli
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    env:
+      LNDF_PYTHON: python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@latest # OIDC needs recent npm (>=11.5.1)
+      # @lndf:constraint the tag must be v plus the package.json version | npm publishes the version in package.json, so a mismatched tag would name a release it does not contain
+      - name: Tag matches package.json
+        run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - run: npm ci
+      - run: npm test
+      - name: Fixtures with the CLI
+        run: python ../tests/run.py --validator ../tests/lndf_cli.py
+      - run: npm publish --dry-run
+
+  publish:
+    needs: dry-run
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    # @lndf:why-not id-token: write for the whole workflow | the dry-run job runs dev-dependency code and needs no token, since npm publish --dry-run skips OIDC and provenance without it
+    permissions:
+      contents: read
+      id-token: write # OIDC for npm Trusted Publishing and provenance
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24.x"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm install -g npm@latest # OIDC needs recent npm (>=11.5.1)
+      - run: npm ci
+      - run: npm publish

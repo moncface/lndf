@@ -1,0 +1,51 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # @lndf:constraint run on Windows as well as Linux | path joining, error messages and line endings differ there, and the CLI must match validate.py on both
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22.x", "24.x"]
+    runs-on: ${{ matrix.os }}
+    env:
+      LNDF_PYTHON: python
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Fixtures with validate.py
+        run: python tests/run.py
+      - name: Install CLI dev dependencies
+        working-directory: cli
+        run: npm ci
+      - name: CLI tests (build, then compare with validate.py)
+        working-directory: cli
+        run: npm test
+      - name: Fixtures with the CLI
+        run: python tests/run.py --validator tests/lndf_cli.py
+      # @lndf:constraint run the packed tarball through the command npm installs | the steps above start dist/cli.js with node, which skips the files list, the shebang and npm's bin shims
+      - name: Packed CLI through its npm command
+        shell: bash
+        run: |
+          version=$(node -p "require('./cli/package.json').version")
+          tgz=$(cd cli && npm pack --silent --pack-destination "$RUNNER_TEMP" | tail -n 1)
+          mkdir "$RUNNER_TEMP/lndf-install"
+          cd "$RUNNER_TEMP/lndf-install"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "$RUNNER_TEMP/$tgz"
+          test "$(head -n 1 node_modules/lndf/dist/cli.js)" = "#!/usr/bin/env node"
+          test "$(npx --no-install lndf --version)" = "$version"
+          npx --no-install lndf validate "$GITHUB_WORKSPACE/tests/fixtures/source/pass-js-two-kinds.js" --today 2026-10-03

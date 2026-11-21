@@ -116,7 +116,7 @@ LNDF contains only intent. Because details are omitted, humans grasp the full pi
  "bug-fixed":"notice not firing at timer=0"}
 ```
 
-A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives 35 tokens and fully restores project context.
+A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives about 35 tokens and can continue the work from there.
 
 The same holds for a judgment line. `why-not Promise.all | one failure must not reject the whole batch` is read by a maintainer in two seconds and by an agent as a constraint it must not undo. Neither reader needs the discussion that produced it.
 

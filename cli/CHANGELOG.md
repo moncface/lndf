@@ -1,6 +1,6 @@
 # lndf CLI changelog
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-11-22
 
 - `lndf parse`: prints LNDF judgment records as a JSON array on stdout. It reads `@lndf:` comments in source files (the five fields of `validate --index`), the `LNDF-*` trailers of a commit message or `.lndf` file (`--commit-msg`), or the trailers of the commits reachable from HEAD (`--git`, with `--range` and `--max-count`). It does not check them: a malformed line is left out and named on stderr, an expired `temporal` date is kept, and a value that looks like a secret is printed as `[REDACTED]`. Exit status: 0 = printed, 1 = a file cannot be read or git is missing or fails, 2 = usage error.
 - `lndf validate` is unchanged.

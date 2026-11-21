@@ -84,7 +84,7 @@ check them; `lndf validate` does.
     lndf parse --commit-msg <file>
     lndf parse --git [--range <revision-range>] [--max-count <n>]
 
-`npx lndf` runs the version published on npm, and 0.1.0 has no `parse`.
+`parse` is in 0.2.0 and later; 0.1.0 does not have it.
 `lndf --version` shows which version you run.
 
 - Paths are read as `lndf validate` reads them. Each record has `path`,

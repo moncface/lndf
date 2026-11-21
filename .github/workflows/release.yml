@@ -51,4 +51,6 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: npm install -g npm@latest # OIDC needs recent npm (>=11.5.1)
       - run: npm ci
+      # @lndf:constraint npm run build before npm publish, although prepack builds | npm reads the bin path in package.json before prepack runs and warns "No bin file found at dist/cli.js" when dist is not built yet
+      - run: npm run build
       - run: npm publish

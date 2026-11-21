@@ -65,3 +65,8 @@ Install:
 - AGENTS.snippet.md (the part above `---`, which is not pasted) and README "Distribution": Claude Code v2.1.277 and later reads the repo's `AGENTS.md` only from the working directory and above it, and by default not when a `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` is there. For Claude Code the same text also goes into `~/.claude/CLAUDE.md` and into the `CLAUDE.md` of a repo that has one, with the skill paths under `.claude/skills/`
 - Measured only with the reading line in Claude Code's `CLAUDE.md`. Not measured through `AGENTS.md`, for Codex or for Claude Code
 - SKILL.md and SKILL.ja.md are unchanged. Their "Distributing to other agents" section still names only `AGENTS.md`
+
+## v0.2.11 — 2026-11-22
+- hooks/commit-msg: `git config lndf.require true` makes trailers mandatory in one repository, beside `LNDF_REQUIRE=1`. Either switch is enough. The env var reaches every repo because the hook is installed globally (core.hooksPath), so it could not express a per-repo opt-in. With neither set the hook behaves as in v0.2.10
+- SKILL.md and SKILL.ja.md: step 4 names both switches. Until now `LNDF_REQUIRE` was described only in the comment at the top of the hook
+- Measured in a scratch repo with the hook in `.git/hooks`: no switch / env=1 / config=true / config=true with a trailer / config=true on a `chore:` commit / config=false with env=1 / config=false alone gave 0 / 1 / 1 / 0 / 0 / 1 / 0

@@ -150,6 +150,7 @@ LNDF-ref: https://example.com/decisions/7
    - それ以外(クラウド等): skill 読み込み時に示される Base directory の `validate.py`
 4. コミット時: 変更の理由(捨てた案・暫定・執行した決定)があれば trailer に書く。書式の検査は `validate.py --commit-msg <file>` で、git の `commit-msg` hook に置くと自動で門になる(`hooks/commit-msg` を `.git/hooks/` にコピーするか、`git config core.hooksPath hooks`)。skill は書き方を教える側、hook が通さざるを得ない側で、両方置く
    - `--commit-msg` は既定では**書式だけ**を検査する(trailer の無いコミットは通る)。repo 全体で「判断のあるコミットには必ず trailer」を課したい時だけ `--require` を足す。`--require` は merge / revert / `chore:` / `style:` / `docs:` を免除する
+   - hook が `--require` を足すのは、`git config lndf.require true` が設定されている時(その repo だけ。設定は `.git/config` に入るので、clone し直したら入れ直す)か、環境変数 `LNDF_REQUIRE=1` がある時(それが届く全 repo)。どちらか一方で効き、`lndf.require false` は `LNDF_REQUIRE=1` を打ち消さない。どちらも無ければ hook は書式だけを検査する
 
 ## 他のエージェント(Codex 等)への配布
 

@@ -150,6 +150,7 @@ The readers of comments and trailers are everyone who can read the repo. A reaso
    - Elsewhere (cloud etc.): `validate.py` in the Base directory shown when the skill is loaded
 4. When committing: if the change has reasons (discarded options, provisional decisions, a decision it executes), write them as trailers. The format check is `validate.py --commit-msg <file>`; placed in git's `commit-msg` hook it becomes an automatic gate (copy `hooks/commit-msg` to `.git/hooks/`, or `git config core.hooksPath hooks`). The skill is the side that teaches how to write, the hook is the side every commit has to pass; place both
    - By default `--commit-msg` checks **only the format** (a commit with no trailer passes). Add `--require` only when you want to require, across the repo, that every commit with a judgment has a trailer. `--require` exempts merge / revert / `chore:` / `style:` / `docs:`
+   - The hook adds `--require` when `git config lndf.require true` is set (that repository only; the setting lives in `.git/config`, so a new clone needs it again) or when the environment variable `LNDF_REQUIRE=1` is set (every repository it reaches). Either one is enough, and `lndf.require false` does not turn off `LNDF_REQUIRE=1`. With neither, the hook checks only the format
 
 ## Distributing to other agents (Codex etc.)
 

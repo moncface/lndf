@@ -5,10 +5,17 @@
 #   git config core.hooksPath <dir containing this file>
 #
 # Set LNDF_VALIDATE to the validate.py path if the skill folder is elsewhere.
-# Set LNDF_REQUIRE=1 to demand at least one trailer per non-exempt commit.
+# Set LNDF_REQUIRE=1 to demand at least one trailer per non-exempt commit,
+# or run `git config lndf.require true` to demand it in one repository only.
+
+REQUIRE="${LNDF_REQUIRE:-0}"
+# @lndf:constraint git config lndf.require as a second switch beside the env var | the hook is installed globally and an env var reaches every repo, so a per-repo opt-in needs a setting stored in that repo
+if [ "$REQUIRE" != "1" ] && [ "$(git config --bool lndf.require 2>/dev/null)" = "true" ]; then
+  REQUIRE=1
+fi
 
 # @lndf:why-not require python for every commit | the hook is installed globally; a machine without python would block commits in unrelated repos. Only messages carrying LNDF lines need validation
-if [ "${LNDF_REQUIRE:-0}" != "1" ] && ! grep -qi '^LNDF-' "$1"; then
+if [ "$REQUIRE" != "1" ] && ! grep -qi '^LNDF-' "$1"; then
   exit 0
 fi
 
@@ -34,7 +41,7 @@ if [ -z "$PY" ]; then
   echo "lndf-comment: no working python found (tried python, py, python3)" >&2
   exit 1
 fi
-if [ "${LNDF_REQUIRE:-0}" = "1" ]; then
+if [ "$REQUIRE" = "1" ]; then
   exec "$PY" "$VALIDATE" --commit-msg "$1" --require
 else
   exec "$PY" "$VALIDATE" --commit-msg "$1"

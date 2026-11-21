@@ -116,7 +116,7 @@ LNDF contains only intent. Because details are omitted, humans grasp the full pi
  "bug-fixed":"notice not firing at timer=0"}
 ```
 
-A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives 35 tokens and fully restores project context. No other format achieves this simultaneously.
+A human reads this in 10 seconds and knows: four features complete, one in progress, one bug fixed. An LLM receives 35 tokens and fully restores project context.
 
 The same holds for a judgment line. `why-not Promise.all | one failure must not reject the whole batch` is read by a maintainer in two seconds and by an agent as a constraint it must not undo. Neither reader needs the discussion that produced it.
 
@@ -124,7 +124,8 @@ The same holds for a judgment line. `why-not Promise.all | one failure must not 
 |--------|--------------------------|------|
 | Human review time | 10–20 minutes | 10 seconds |
 | LLM injection tokens | 800–5,000 | 30–50 |
-| As sessions accumulate | Context explodes | Size stays constant (overwrite) |
+
+*These figures are illustrative, not measured. They compare the 35-token example above with the kind of log or specification it would replace.*
 
 "Intent" is the abstraction level that humans and intelligent parsers share. Formats that describe details inevitably optimize for one side or the other. Formats that describe intent transcend this dichotomy.
 
@@ -154,20 +155,22 @@ In v0.2 the three stages read: the skill (`SKILL.md`) says what counts as a judg
 
 ## Token Economics
 
-Reduction is a by-product. The first purpose of LNDF is continuity — carrying judgment across the boundary of a session, an agent or a model without re-deriving it. That said, the practical consequence of the intent-over-data principle is dramatic token reduction. Structured data sent to LLMs via API carries a direct cost per token.
+Reduction is a by-product. The first purpose of LNDF is continuity — carrying judgment across the boundary of a session, an agent or a model without re-deriving it. That said, a practical consequence of the intent-over-data principle is that fewer tokens are sent. Structured data sent to LLMs via API carries a direct cost per token.
 
 | Approach | Relative Token Count | Relative Cost |
 |----------|---------------------|---------------|
 | Standard JSON (full specification) | 100% | 100% |
 | Minified JSON | ~80% | ~80% |
 | TOON (Token-Oriented Object Notation) | ~40-70% | ~40-70% |
-| LNDF (intent only) | ~4-16% (estimated) | ~4-16% (estimated) |
+| LNDF (intent only) | ~4-16% (projected, not measured) | ~4-16% (projected, not measured) |
 
-*Note: LNDF figures are theoretical projections based on intent-based omission applied to UI specification payloads. Actual reduction depends on domain complexity, LLM context availability, and how much knowledge the LLM reliably holds for the target domain. Empirical benchmarks will follow as implementations mature.*
+*Note: the LNDF row is not a measurement. It is a projection from the v0.1 work on UI specification payloads, where most fields could be left out because the model already knew them. It has not been benchmarked, and it does not describe the v0.2 judgment records.*
 
-The gap between LNDF and existing optimization approaches (TOON, Morph Compact, LLMLingua) is not incremental. It is structural. Existing approaches compress the same information. LNDF transmits less information.
+TOON, Morph Compact and LLMLingua compress the same information. LNDF sends less information: it leaves out what the reader can infer. These are different operations, so the rows above do not rank one against the other.
 
 In the v0.2 setting the saving has a different shape: an agent that receives a handful of judgment lines does not re-explore the history to reconstruct them. The amount saved scales with the number of hand-offs between agents, which is why it was invisible while agents were used one at a time.
+
+The same holds for work that runs without a person: scheduled jobs, maintenance runs, long agent tasks. Each run starts without the context of the one before it, and usually nobody reads more than its report. What the last run decided against has to be in the repository, or the next run spends tokens reaching the same decision again, or undoes it. This has not been measured.
 
 ---
 
